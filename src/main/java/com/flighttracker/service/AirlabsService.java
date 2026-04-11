@@ -6,6 +6,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.flighttracker.dto.AirlabsFlight;
 import com.flighttracker.dto.AirlabsResponse;
 
 import jakarta.annotation.PostConstruct;
@@ -34,7 +35,7 @@ public class AirlabsService {
             AirlabsResponse data = webClient.get()
                 .uri(uriBuilder -> uriBuilder
                     .queryParam("api_key", apiKey)
-                    .queryParam("bbox", "20.0,70.0,35.0,85.0") // Bounding box for India
+                    .queryParam("bbox", "6.0,68.0,36.0,98.0") // Bounding box for India
                     .build())
                 .retrieve()
                 .bodyToMono(AirlabsResponse.class)
@@ -54,5 +55,17 @@ public class AirlabsService {
     // Your controller will call this method!
     public AirlabsResponse getLiveFlights() {
         return this.currentData;
+    }
+    
+    public AirlabsFlight getFlightByCallsign(String callsign) {
+        if (this.currentData == null || this.currentData.getResponse() == null) {
+            return null;
+        }
+
+        // Use Java Streams to filter the list and find the matching callsign
+        return this.currentData.getResponse().stream()
+                .filter(flight -> flight.getCallsign() != null && flight.getCallsign().equalsIgnoreCase(callsign))
+                .findFirst()
+                .orElse(null); // Return null if the plane isn't in the current list
     }
 }

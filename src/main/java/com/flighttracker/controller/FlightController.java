@@ -33,6 +33,16 @@ public class FlightController {
         }
         return Collections.emptyList();
     }
+    
+    @GetMapping("/{callsign}")
+    public AirlabsFlight getSpecificFlight(@PathVariable String callsign) {
+        AirlabsFlight flight = airlabsService.getFlightByCallsign(callsign);
+        if (flight == null) {
+            // You could also throw a 404 error here, but returning null is fine for now
+            return null; 
+        }
+        return flight;
+    }
 	
 	@GetMapping("/route/{flightIata}")
     public AviationstackResponse.FlightData getFlightRoute(@PathVariable String flightIata) {
