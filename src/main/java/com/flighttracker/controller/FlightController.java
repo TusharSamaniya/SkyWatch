@@ -1,7 +1,9 @@
 package com.flighttracker.controller;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,16 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.flighttracker.dto.AirlabsFlight;
 import com.flighttracker.dto.AirlabsResponse;
-import com.flighttracker.dto.AviationstackResponse;
 import com.flighttracker.service.AirlabsService;
-import com.flighttracker.service.AviationstackService;
 
 @RestController
 @RequestMapping("/api/flights")
 public class FlightController {
-	
-	@Autowired
-	private AviationstackService aviationstackService;
 	
 	@Autowired
     private AirlabsService airlabsService; 
@@ -34,18 +31,33 @@ public class FlightController {
         return Collections.emptyList();
     }
     
-    @GetMapping("/{callsign}")
-    public AirlabsFlight getSpecificFlight(@PathVariable String callsign) {
-        AirlabsFlight flight = airlabsService.getFlightByCallsign(callsign);
-        if (flight == null) {
-            // You could also throw a 404 error here, but returning null is fine for now
-            return null; 
-        }
-        return flight;
-    }
+	/* @GetMapping("/{callsign}")
+	public AirlabsFlight getSpecificFlight(@PathVariable String callsign) {
+	    AirlabsFlight flight = airlabsService.getFlightByCallsign(callsign);
+	    if (flight == null) {
+	        // You could also throw a 404 error here, but returning null is fine for now
+	        return null; 
+	    }
+	    return flight;
+	}
 	
 	@GetMapping("/route/{flightIata}")
-    public AviationstackResponse.FlightData getFlightRoute(@PathVariable String flightIata) {
-        return aviationstackService.getRouteDetails(flightIata);
+	public AviationstackResponse.FlightData getFlightRoute(@PathVariable String flightIata) {
+	    return aviationstackService.getRouteDetails(flightIata);
+	}*/
+	
+	@GetMapping("/{callsign}")
+    public Map<String, Object> getSpecificFlight(@PathVariable String callsign) {
+        Map<String, Object> combinedData = new HashMap<>();
+
+        // 1. Get the live radar telemetry from memory
+        AirlabsFlight radarData = airlabsService.getFlightByCallsign(callsign);
+        combinedData.put("radar", radarData);
+
+        // 2. Fetch the live timetable from AirLabs
+        com.flighttracker.dto.AirlabsSchedule scheduleData = airlabsService.getFlightSchedule(callsign);
+        combinedData.put("schedule", scheduleData);
+
+        return combinedData; // Spring Boot automatically converts this Map into a beautiful JSON object!
     }
 }
