@@ -24,5 +24,8 @@ public class AirlabsFlight {
     
     @JsonAlias("dir")
     private Double trueTrack;
+    
+    @JsonAlias("reg_number")
+    private String registration;
 
 }
