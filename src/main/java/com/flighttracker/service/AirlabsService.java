@@ -28,7 +28,14 @@ public class AirlabsService {
     }
 
     // THE GEOGRAPHIC DICTIONARY: Translates Dropdown text into invisible Bounding Boxes
+ // THE GEOGRAPHIC DICTIONARY: Translates Dropdown text into invisible Bounding Boxes
     private String getBoundingBox(String country, String state) {
+        
+        // Safety Check: If state is empty string, treat it as null (Entire Country)
+        if (state != null && state.trim().isEmpty()) {
+            state = null;
+        }
+
         // 1. INDIA (Default)
         if (country == null || country.equalsIgnoreCase("India")) {
             if ("Delhi".equalsIgnoreCase(state)) return "28.40,76.83,28.88,77.34";
