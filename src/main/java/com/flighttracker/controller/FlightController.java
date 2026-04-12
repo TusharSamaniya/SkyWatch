@@ -16,11 +16,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.flighttracker.dto.AirlabsFlight;
 import com.flighttracker.dto.AirlabsResponse;
 import com.flighttracker.service.AirlabsService;
+import com.flighttracker.service.GeminiService;
 
 @RestController
 @RequestMapping("/api/flights")
 @CrossOrigin(origins = "*")
 public class FlightController {
+	
+	@Autowired
+    private GeminiService geminiService;
 	
 	@Autowired
     private AirlabsService airlabsService; 
@@ -54,5 +58,22 @@ public class FlightController {
         }
 
         return combinedData; 
+    }
+	
+	@GetMapping("/{callsign}/story")
+    public Map<String, String> getFlightStory(
+            @PathVariable String callsign,
+            @RequestParam(defaultValue = "Unknown") String dep,
+            @RequestParam(defaultValue = "Unknown") String arr,
+            @RequestParam(defaultValue = "Commercial") String aircraft,
+            @RequestParam(defaultValue = "0") int alt) {
+        
+        // Ask the Gemini Service for the story
+        String story = geminiService.generateFlightStory(callsign, dep, arr, aircraft, alt);
+        
+        // Return it as a neat JSON object to React
+        Map<String, String> response = new HashMap<>();
+        response.put("story", story);
+        return response;
     }
 }
