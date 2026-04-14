@@ -1,7 +1,14 @@
 package com.flighttracker.service;
 
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -11,6 +18,7 @@ import com.flighttracker.dto.AirlabsSchedule;
 import com.flighttracker.dto.AirlabsScheduleResponse;
 
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.JsonNode;
 
 @Service
 @Slf4j
@@ -169,5 +177,88 @@ public class AirlabsService {
             log.error("No photo found for {}. Error: {}", registration, e.getMessage());
         }
         return null;
+    }
+    
+ // NEW: Fetch all airports in a specific country (Defaulting to India)
+    public List<Map<String, Object>> getAirportsByCountry(String countryCode) {
+        log.info("Fetching airports for country: {}", countryCode);
+        
+        try {
+            String url = "https://airlabs.co/api/v9/airports?country_code=" + countryCode + "&api_key=" + apiKey;
+
+            // FIX: Using WebClient instead of RestTemplate to clear the red lines!
+            JsonNode rootNode = WebClient.create().get()
+                    .uri(url)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
+
+            JsonNode responseArray = rootNode.path("response");
+            List<Map<String, Object>> airports = new ArrayList<>();
+
+            if (responseArray.isArray()) {
+                for (JsonNode node : responseArray) {
+                    if (node.hasNonNull("iata_code") && node.hasNonNull("lat") && node.hasNonNull("lng")) {
+                        Map<String, Object> airport = new HashMap<>();
+                        airport.put("name", node.path("name").asText());
+                        airport.put("iata", node.path("iata_code").asText());
+                        airport.put("lat", node.path("lat").asDouble());
+                        airport.put("lng", node.path("lng").asDouble());
+                        airports.add(airport);
+                    }
+                }
+            }
+            log.info("Successfully loaded {} commercial airports.", airports.size());
+            return airports;
+
+        } catch (Exception e) {
+            log.error("Failed to fetch airports: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    // NEW: Fetch live arrivals and departures for a specific airport
+    public Map<String, List<JsonNode>> getAirportSchedules(String iataCode) {
+        log.info("Fetching live schedules for airport: {}", iataCode);
+        Map<String, List<JsonNode>> schedules = new HashMap<>();
+        
+        try {
+            // 1. Fetch Departures using WebClient
+            String depUrl = "https://airlabs.co/api/v9/schedules?dep_iata=" + iataCode + "&api_key=" + apiKey;
+            JsonNode depRoot = WebClient.create().get()
+                    .uri(depUrl)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
+            
+            List<JsonNode> departures = new ArrayList<>();
+            if (depRoot != null && depRoot.path("response").isArray()) {
+                depRoot.path("response").forEach(departures::add);
+            }
+            schedules.put("departures", departures);
+
+            // 2. Fetch Arrivals using WebClient
+            String arrUrl = "https://airlabs.co/api/v9/schedules?arr_iata=" + iataCode + "&api_key=" + apiKey;
+            JsonNode arrRoot = WebClient.create().get()
+                    .uri(arrUrl)
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block();
+            
+            List<JsonNode> arrivals = new ArrayList<>();
+            if (arrRoot != null && arrRoot.path("response").isArray()) {
+                arrRoot.path("response").forEach(arrivals::add);
+            }
+            schedules.put("arrivals", arrivals);
+
+            log.info("Loaded {} departures and {} arrivals for {}", departures.size(), arrivals.size(), iataCode);
+            return schedules;
+
+        } catch (Exception e) {
+            log.error("Failed to fetch schedules for {}: {}", iataCode, e.getMessage());
+            schedules.put("departures", Collections.emptyList());
+            schedules.put("arrivals", Collections.emptyList());
+            return schedules;
+        }
     }
 }
